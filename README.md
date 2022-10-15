@@ -15,6 +15,8 @@ Arbitrum hackathon project comparing Open Zeppelin ERC1967 UUPS Proxy implementa
 | 3527       | 3659                | transfer     |
 | 6266       | 6398                | transferFrom |
 | 3053       | 3185                | approve      |
+| -          | -                   | -            |
+| 19579      | 20800               | TOTAL        |
 
 ## Total Gas Diff:
 
