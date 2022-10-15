@@ -1,5 +1,7 @@
 # Minimum Viable Proxy
 
+Arbitrum hackathon project comparing Open Zeppelin ERC1967 UUPS Proxy implementation with Huff.
+
 ## Gas Benchmarks:
 
 | Huff Proxy | Open Zeppelin Proxy | function     |
