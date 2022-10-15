@@ -1,0 +1,76 @@
+// EIP1967 PROXY CONTRACT
+
+// -------------------------------------------------------------------------------------------------
+// ABI
+
+#define function setImplementation(address) nonpayable returns ()
+
+#define error Unauthorized()
+
+// -------------------------------------------------------------------------------------------------
+// CONSTANTS
+
+// hard coding this.
+#define constant ADMIN_SLOT = 0x00
+
+// uint256(keccak256("eip1967.proxy.implementation")) - 1
+#define constant PROXY_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
+
+#define constant WORD_SIZE = 0x20
+
+#define constant SELECTOR_LEN = 0x04
+
+#define constant ERROR_OFFSET = 0x1c
+
+#define macro CONSTRUCTOR() = takes (0) returns (0) {
+    // STORE IMPLEMENTATION
+    [WORD_SIZE]     // [word]
+    dup1            // [word, word]
+    codesize        // [codesize, word, word]
+    sub             // [impl_offset, word]
+    returndatasize  // [zero, impl_offset, word]
+    codecopy        // []
+    returndatasize  // [zero]
+    mload           // [impl]
+    [PROXY_SLOT]    // [proxy_slot]
+    sstore          // []
+}
+
+#define macro MAIN() = takes (0) returns (0) {
+    // COPY CALLDATA TO MEMORY
+    calldatasize            // [calldatasize]
+    returndatasize          // [zero, calldatasize]
+    returndatasize          // [zero, zero, calldatasize]
+    calldatacopy            // []
+
+    // DELEGATECALL
+    returndatasize          // [retsize]
+    returndatasize          // [retoffset, retsize]
+    calldatasize            // [argsize, retoffset, retsize]
+    returndatasize          // [argoffset, argsize, retoffset, retsize]
+    [PROXY_SLOT]            // [proxy_slot, argoffset, argsize, retoffset, retsize]
+    sload                   // [impl, argoffset, argsize, retoffset, retsize]
+    gas                     // [gas, impl, argoffset, argsize, retoffset, retsize]
+    delegatecall            // [success]
+
+    // COPY RETURNDATA TO MEMORY
+    returndatasize          // [retsize, success]
+    0x00                    // [retoffset, retsize, success]
+    dup1                    // [memoffset, retoffset, retsize, success]
+    returndatacopy          // [success]
+
+    // RETURN IF SUCCESS, ELSE BUBBLE UP ERROR
+    call_success            // [call_success, success]
+    jumpi                   // []
+
+    // FAILED
+    returndatasize          // [retsize]
+    0x00                    // [zero, retsize]
+    revert                  // []
+
+    // SUCCESS
+    call_success:
+        returndatasize      // [retsize]
+        0x00                // [zero, retsize]
+        return              // []
+}
