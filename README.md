@@ -2,6 +2,12 @@
 
 Arbitrum hackathon project comparing Open Zeppelin ERC1967 UUPS Proxy implementation with Huff.
 
+## Example Deployment
+
+```
+0xdEdbD1395c615e15AFDd14585271BE41C132787E
+```
+
 ## Gas Benchmarks Against ERC20Upgradeable
 
 | Huff Proxy | Open Zeppelin Proxy | function     |
