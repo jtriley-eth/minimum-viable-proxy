@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 import "oz/proxy/ERC1967/ERC1967Proxy.sol";
@@ -95,6 +95,11 @@ contract BenchScript is Script {
         console.log("--- BYTECODE ---");
         console.logBytes(address(huffProxy).code);
         console.logBytes(address(ozProxy).code);
+
+        (uint256 huffcost, uint256 ozcost) = _checkDeployCosts();
+        console.log("--- DEPLOYMENT COST ---");
+        console.log(huffcost);
+        console.log(ozcost);
     }
 
     function _makeCall(
@@ -133,5 +138,21 @@ contract BenchScript is Script {
             pop(call(gas(), oz, 0, argoffset, argsize, 0, 0))
             ozgas := sub(ozgas, gas())
         }
+    }
+
+    function _checkDeployCosts() internal returns (uint256 huffgas, uint256 ozgas) {
+        bytes memory huffcode = compiled.appendArg(implementation);
+
+        assembly {
+            let huffoffset := add(huffcode, 0x20)
+            let huffsize := mload(huffcode)
+            huffgas := gas()
+            pop(create2(0, huffoffset, huffsize, 0))
+            huffgas := sub(huffgas, gas())
+        }
+
+        ozgas = gasleft();
+        new ERC1967Proxy(implementation, new bytes(0));
+        unchecked { ozgas -= gasleft(); }
     }
 }
