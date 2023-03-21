@@ -7,7 +7,9 @@
 #define constant PROXY_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
 
 // placeholder factory address
-#define constant FACTORY_ADDRESS = 0xffffffffffffffffffffffffffffffffffffffff
+#define constant FACTORY_PLACEHOLDER = 0xffffffffffffffffffffffffffffffffffffffff
+
+#define constant ONE = 0x01
 
 #define constant WORD_SIZE = 0x20
 
@@ -25,11 +27,34 @@
     mload           // [impl]
     [PROXY_SLOT]    // [proxy_slot]
     sstore          // []
+
+    // LOAD RUNTIME INTO MEMORY
+    initcode_end    // [initcode_end]
+    codesize        // [codesize, initcode_end]
+    sub             // [runtime_offset]
+    initcode_end    // [initcode_end, runtime_offset]
+    returndatasize  // [zero, initcode_end, runtime_offset]
+    codecopy        // []
+
+    // REPLACE FACTORY PLACEHOLDER WITH CALLER
+    caller          // [factory]
+    initcode_end    // [initcode_end, factory]
+    [ONE]           // [one, initcode_end, factory]
+    add             // [factory_placeholder_offset, factory]
+    mstore          // []
+
+    // RETURN
+    msize           // [size]
+    returndatasize  // [offset, size]
+    return          // []
+
+    // used to calculate runtime offsets
+    initcode_end:
 }
 
 #define macro MAIN() = takes (0) returns (0) {
     // CHECK IF CALLER IS FACTORY
-    [FACTORY_ADDRESS]       // [factory]
+    [FACTORY_PLACEHOLDER]   // [factory]
     caller                  // [caller, factory]
     eq                      // [is_factory]
     is_factory              // [is_factory_dest, is_factory]
