@@ -27,29 +27,6 @@
     mload           // [impl]
     [PROXY_SLOT]    // [proxy_slot]
     sstore          // []
-
-    // LOAD RUNTIME INTO MEMORY
-    initcode_end    // [initcode_end]
-    codesize        // [codesize, initcode_end]
-    sub             // [runtime_offset]
-    initcode_end    // [initcode_end, runtime_offset]
-    returndatasize  // [zero, initcode_end, runtime_offset]
-    codecopy        // []
-
-    // REPLACE FACTORY PLACEHOLDER WITH CALLER
-    caller          // [factory]
-    initcode_end    // [initcode_end, factory]
-    [ONE]           // [one, initcode_end, factory]
-    add             // [factory_placeholder_offset, factory]
-    mstore          // []
-
-    // RETURN
-    msize           // [size]
-    returndatasize  // [offset, size]
-    return          // []
-
-    // used to calculate runtime offsets
-    initcode_end:
 }
 
 #define macro MAIN() = takes (0) returns (0) {
@@ -91,16 +68,16 @@
     0x00                    // [zero, retsize]
     revert                  // []
 
+    // SUCCESS
+    call_success:
+        returndatasize      // [retsize]
+        0x00                // [zero, retsize]
+        return              // []
+
     is_factory:             // []
         returndatasize      // [impl_offset]
         calldataload        // [impl_contract]
         [PROXY_SLOT]        // [proxy_slot, impl_contract]
         sstore              // []
         stop                // []
-
-    // SUCCESS
-    call_success:
-        returndatasize      // [retsize]
-        0x00                // [zero, retsize]
-        return              // []
 }
