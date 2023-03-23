@@ -7,26 +7,32 @@
 #define constant PROXY_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
 
 // placeholder factory address
-#define constant FACTORY_PLACEHOLDER = 0xffffffffffffffffffffffffffffffffffffffff
+#define constant FACTORY_PLACEHOLDER = 0xf000000000000000000000000000000000000000
 
 #define constant ONE = 0x01
-
+#define constant SELECTOR_LEN = 0x04
 #define constant WORD_SIZE = 0x20
 
-#define constant SELECTOR_LEN = 0x04
-
 #define macro CONSTRUCTOR() = takes (0) returns (0) {
-    // STORE IMPLEMENTATION
-    [WORD_SIZE]     // [word]
-    dup1            // [word, word]
-    codesize        // [codesize, word, word]
-    sub             // [impl_offset, word]
-    returndatasize  // [zero, impl_offset, word]
-    codecopy        // []
-    returndatasize  // [zero]
-    mload           // [impl]
-    [PROXY_SLOT]    // [proxy_slot]
-    sstore          // []
+    // COPY CODE TO MEMORY
+    __codesize(CONSTRUCTOR) // [initsize]
+    dup1                    // [initsize, initsize]
+    codesize                // [codesize, initsize, initsize]
+    sub                     // [runtimesize, initsize]
+    swap1                   // [initsize, runtimesize]
+    returndatasize          // [zero, initsize, runtimesize]
+    codecopy                // []
+
+    // LOAD ARGUMENT
+    __codesize(MAIN)        // [arg0offset]
+    dup1                    // [arg0offset, arg0offset]
+    mload                   // [arg0, arg0offset]
+    [PROXY_SLOT]            // [proxy_slot, arg0, arg0offset]
+    sstore                  // [arg0offset]
+
+    // RETURN
+    returndatasize          // [zero, arg0offset]
+    return                  // []
 }
 
 #define macro MAIN() = takes (0) returns (0) {
@@ -43,35 +49,38 @@
     returndatasize          // [zero, zero, calldatasize]
     calldatacopy            // []
 
+    // CACHE ZERO FOR AFTER DELEGATECALL
+    returndatasize          // [zero]
+
     // DELEGATECALL
-    returndatasize          // [retsize]
-    returndatasize          // [retoffset, retsize]
-    calldatasize            // [argsize, retoffset, retsize]
-    returndatasize          // [argoffset, argsize, retoffset, retsize]
-    [PROXY_SLOT]            // [proxy_slot, argoffset, argsize, retoffset, retsize]
-    sload                   // [impl, argoffset, argsize, retoffset, retsize]
-    gas                     // [gas, impl, argoffset, argsize, retoffset, retsize]
-    delegatecall            // [success]
+    returndatasize          // [retsize, zero]
+    returndatasize          // [retoffset, retsize, zero]
+    calldatasize            // [argsize, retoffset, retsize, zero]
+    returndatasize          // [argoffset, argsize, retoffset, retsize, zero]
+    [PROXY_SLOT]            // [proxy_slot, argoffset, argsize, retoffset, retsize, zero]
+    sload                   // [impl, argoffset, argsize, retoffset, retsize, zero]
+    gas                     // [gas, impl, argoffset, argsize, retoffset, retsize, zero]
+    delegatecall            // [success, zero]
 
     // COPY RETURNDATA TO MEMORY
-    returndatasize          // [retsize, success]
-    0x00                    // [retoffset, retsize, success]
-    dup1                    // [memoffset, retoffset, retsize, success]
-    returndatacopy          // [success]
+    returndatasize          // [retsize, success, zero]
+    dup3                    // [retoffset, retsize, success, zero]
+    dup1                    // [memoffset, retoffset, retsize, success, zero]
+    returndatacopy          // [success, zero]
 
     // RETURN IF SUCCESS, ELSE BUBBLE UP ERROR
-    call_success            // [call_success, success]
-    jumpi                   // []
+    call_success            // [call_success, success, zero]
+    jumpi                   // [zero]
 
     // FAILED
-    returndatasize          // [retsize]
-    0x00                    // [zero, retsize]
+    returndatasize          // [retsize, zero]
+    swap1                   // [zero, retsize]
     revert                  // []
 
     // SUCCESS
     call_success:
-        returndatasize      // [retsize]
-        0x00                // [zero, retsize]
+        returndatasize      // [retsize, zero]
+        swap1               // [zero, retsize]
         return              // []
 
     is_factory:             // []
